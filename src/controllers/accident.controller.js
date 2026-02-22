@@ -1,0 +1,66 @@
+const Accident = require('../models/Accident');
+const Camera = require('../models/Camera');
+
+exports.getAll = async (req, res) => {
+  try {
+    const { status } = req.query;
+    const where = status ? { status } : {};
+    const accidents = await Accident.findAll({
+      where,
+      order: [['timestamp', 'DESC']],
+      include: [{ model: Camera, as: 'camera', attributes: ['name', 'location'] }]
+    });
+    res.json(accidents);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getOne = async (req, res) => {
+  try {
+    const accident = await Accident.findByPk(req.params.id, {
+      include: [{ model: Camera, as: 'camera', attributes: ['name', 'location'] }]
+    });
+    if (!accident) return res.status(404).json({ message: 'Accident not found' });
+    res.json(accident);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.create = async (req, res) => {
+  try {
+    const { camera_id, latitude, longitude, location, severity, description, video_clip } = req.body;
+    const accident = await Accident.create({
+      camera_id, latitude, longitude,
+      location, severity, description, video_clip
+    });
+    res.status(201).json({ message: 'Accident reported', accident });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const resolved_at = status === 'resolved' ? new Date() : null;
+    await Accident.update({ status, resolved_at }, { where: { id: req.params.id } });
+    const updated = await Accident.findByPk(req.params.id);
+    res.json({ message: 'Status updated', accident: updated });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getRecent = async (req, res) => {
+  try {
+    const accidents = await Accident.findAll({
+      order: [['timestamp', 'DESC']],
+      limit: 10
+    });
+    res.json(accidents);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
