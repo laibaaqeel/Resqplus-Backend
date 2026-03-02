@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RESQ+ Socket Test</title>
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #1a1a2e; color: white; }
+    h1 { color: #e94560; }
+    #status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+    .connected { background: #00b894; }
+    .disconnected { background: #d63031; }
+    #alerts { margin-top: 20px; }
+    .alert-card {
+      background: #16213e;
+      border-left: 4px solid #e94560;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+    .severity-extreme { border-left-color: #d63031; }
+    .severity-high    { border-left-color: #e17055; }
+    .severity-medium  { border-left-color: #fdcb6e; }
+    .severity-low     { border-left-color: #00b894; }
+  </style>
+</head>
+<body>
+  <h1>🚑 RESQ+ Real-time Alert Test</h1>
+  <p>This simulates what the paramedic mobile app receives</p>
+
+  <div id="status" class="disconnected">⚠️ Connecting to server...</div>
+
+  <div id="alerts">
+    <h3>Alerts will appear here:</h3>
+  </div>
+
+  <script>
+    const socket = io('http://localhost:5000');
+
+    const statusDiv = document.getElementById('status');
+    const alertsDiv = document.getElementById('alerts');
+
+    socket.on('connect', () => {
+      statusDiv.className = 'connected';
+      statusDiv.textContent = '✅ Connected to RESQ+ Backend!';
+
+      // Simulate paramedic with id 3 joining
+      socket.emit('join_room', 3);
+    });
+
+    socket.on('disconnect', () => {
+      statusDiv.className = 'disconnected';
+      statusDiv.textContent = '❌ Disconnected from server';
+    });
+
+    // Listen for new accident alerts
+    socket.on('new_accident', (data) => {
+      const card = document.createElement('div');
+      card.className = `alert-card severity-${data.accident.severity}`;
+      card.innerHTML = `
+        <h3>🚨 ACCIDENT DETECTED!</h3>
+        <p><strong>Location:</strong> ${data.accident.location}</p>
+        <p><strong>Severity:</strong> ${data.accident.severity.toUpperCase()}</p>
+        <p><strong>Coordinates:</strong> ${data.accident.latitude}, ${data.accident.longitude}</p>
+        <p><strong>Time:</strong> ${new Date(data.accident.timestamp).toLocaleTimeString()}</p>
+        <p><strong>Message:</strong> ${data.message}</p>
+      `;
+      alertsDiv.prepend(card);
+    });
+
+    // Listen for personal emergency request
+    socket.on('emergency_request', (data) => {
+      const card = document.createElement('div');
+      card.className = `alert-card severity-${data.severity}`;
+      card.innerHTML = `
+        <h3>🆘 EMERGENCY REQUEST!</h3>
+        <p><strong>Location:</strong> ${data.location}</p>
+        <p><strong>Severity:</strong> ${data.severity.toUpperCase()}</p>
+        <p><strong>Message:</strong> ${data.message}</p>
+        <p><em>Open app to accept or reject</em></p>
+      `;
+      alertsDiv.prepend(card);
+    });
+  </script>
+</body>
+</html>
