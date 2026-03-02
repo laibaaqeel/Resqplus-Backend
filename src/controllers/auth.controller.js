@@ -5,7 +5,7 @@ const User = require('../models/User');
 // ─── REGISTER ─────────────────────────────────────────────
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, phone, role, vehicle_type } = req.body;
+    const { name, email, password, phone, role, vehicle_type, org_id } = req.body;
 
     // Validate required fields
     if (!name || !email || !password) {
@@ -21,16 +21,10 @@ exports.register = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
     const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      phone: phone || null,
-      role: role || 'paramedic',
-      vehicle_type: vehicle_type || null
-    });
-
+  name, email, password: hashedPassword,
+  phone, role, vehicle_type, org_id: org_id || null
+});
     res.status(201).json({
       message: 'User registered successfully',
       user: {
