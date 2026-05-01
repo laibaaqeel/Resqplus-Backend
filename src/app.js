@@ -27,6 +27,7 @@ app.use('/api/accidents',     require('./routes/accident.routes'));
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
 app.use('/api/users',     require('./routes/user.routes'));
 app.use('/api/responders', require('./routes/responder.routes'));
+app.use('/api/reports', require('./routes/reports.routes'));
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });

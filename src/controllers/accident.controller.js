@@ -47,7 +47,7 @@ exports.create = async (req, res) => {
       where: { role: 'paramedic', status: 'active' }
     });
 
-    // Create emergency request + notification for each paramedic
+   // Create emergency request + notification for each paramedic
     for (const paramedic of paramedics) {
       await EmergencyRequest.create({
         accident_id:  accident.id,
@@ -57,6 +57,16 @@ exports.create = async (req, res) => {
 
       await Notification.create({
         user_id:     paramedic.id,
+        accident_id: accident.id,
+        message:     `🚨 Accident detected at ${location}! Severity: ${severity}`
+      });
+    }
+
+    // Also create notification for all admins
+    const admins = await User.findAll({ where: { role: 'admin', status: 'active' } });
+    for (const admin of admins) {
+      await Notification.create({
+        user_id:     admin.id,
         accident_id: accident.id,
         message:     `🚨 Accident detected at ${location}! Severity: ${severity}`
       });

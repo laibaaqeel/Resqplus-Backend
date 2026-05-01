@@ -55,12 +55,10 @@ exports.getStats = async (req, res) => {
 // ─── MAP DATA ─────────────────────────────────────────────
 exports.getMapData = async (req, res) => {
   try {
-    const accidents = await Accident.findAll({
-      where: { status: 'active' },
-      attributes: ['id', 'latitude', 'longitude', 'location', 'severity', 'timestamp'],
-      order: [['timestamp', 'DESC']]
-    });
-
+   const accidents = await Accident.findAll({
+  attributes: ['id', 'latitude', 'longitude', 'location', 'severity', 'status', 'timestamp'],
+  order: [['timestamp', 'DESC']]
+});
     res.json(accidents);
   } catch (err) {
     res.status(500).json({ message: err.message });
