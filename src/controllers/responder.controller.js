@@ -20,7 +20,6 @@ exports.getMyRequests = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 // ─── ACCEPT REQUEST ───────────────────────────────────────
 exports.acceptRequest = async (req, res) => {
   try {
@@ -34,15 +33,57 @@ exports.acceptRequest = async (req, res) => {
       return res.status(400).json({ message: 'Request is no longer pending' });
     }
 
+    // Accept this request
     await EmergencyRequest.update(
       { status: 'accepted', responder_id: req.user.id },
       { where: { id: request_id } }
     );
 
+    // Mark this paramedic as busy
     await User.update(
       { status: 'busy' },
       { where: { id: req.user.id } }
     );
+
+    // Cancel all other pending requests for same accident
+    const otherRequests = await EmergencyRequest.findAll({
+      where: {
+        accident_id: request.accident_id,
+        status: 'pending'
+      }
+    });
+
+    for (const otherRequest of otherRequests) {
+      // Cancel their request
+      await EmergencyRequest.update(
+        { status: 'cancelled' },
+        { where: { id: otherRequest.id } }
+      );
+
+      // Get accepting paramedic name
+      const acceptingParamedic = await User.findByPk(req.user.id, {
+        attributes: ['name']
+      });
+
+      // Send notification to other paramedics
+      await Notification.create({
+        user_id: otherRequest.responder_id,
+        accident_id: request.accident_id,
+        message: `✅ Emergency at this location has been accepted by ${acceptingParamedic.name}. No action needed.`
+      });
+
+      // Send real-time socket notification
+      try {
+        const { getIO } = require('../config/socket');
+        const io = getIO();
+        io.to(`user_${otherRequest.responder_id}`).emit('request_cancelled', {
+          accident_id: request.accident_id,
+          message: `Emergency accepted by ${acceptingParamedic.name}. No action needed.`
+        });
+      } catch (socketErr) {
+        console.log('Socket error:', socketErr.message);
+      }
+    }
 
     const accident = await Accident.findByPk(request.accident_id);
 
