@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const {
-  register, login, getMe, updateProfile, changePassword
+  register, login, getMe, updateProfile, changePassword, registerPushToken
 } = require('../controllers/auth.controller');
 const { protect } = require('../middleware/auth.middleware');
 
@@ -143,5 +143,6 @@ router.put('/update-profile', protect, updateProfile);
  *         description: Password changed successfully
  */
 router.post('/change-password', protect, changePassword);
+router.post('/register-push-token', protect, registerPushToken);
 
 module.exports = router;

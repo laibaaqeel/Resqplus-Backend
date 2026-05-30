@@ -128,6 +128,18 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+// ─── REGISTER PUSH TOKEN ──────────────────────────────────
+exports.registerPushToken = async (req, res) => {
+  try {
+    const { push_token } = req.body;
+    if (!push_token) return res.status(400).json({ message: 'push_token is required' });
+    await User.update({ fcm_token: push_token }, { where: { id: req.user.id } });
+    res.json({ message: 'Push token registered' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // ─── CHANGE PASSWORD ──────────────────────────────────────
 exports.changePassword = async (req, res) => {
   try {

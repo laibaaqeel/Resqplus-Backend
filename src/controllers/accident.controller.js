@@ -5,6 +5,19 @@ const EmergencyRequest = require('../models/EmergencyRequest');
 const Notification     = require('../models/Notification');
 const { getIO }        = require('../config/socket');
 
+const sendExpoPush = async (pushToken, title, body, data = {}) => {
+  if (!pushToken) return;
+  try {
+    await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: pushToken, sound: 'default', title, body, data, priority: 'high' }),
+    });
+  } catch (err) {
+    console.log('Push error:', err.message);
+  }
+};
+
 exports.getAll = async (req, res) => {
   try {
     const { status } = req.query;
@@ -103,6 +116,18 @@ exports.create = async (req, res) => {
       }
     } catch (socketErr) {
       console.log('Socket not available:', socketErr.message);
+    }
+
+    // Send push notifications to all active paramedics
+    for (const paramedic of paramedics) {
+      if (paramedic.fcm_token) {
+        await sendExpoPush(
+          paramedic.fcm_token,
+          '🚨 Emergency Alert',
+          `Accident at ${location} — Severity: ${severity?.toUpperCase()}`,
+          { accident_id: accident.id, type: 'emergency_request' }
+        );
+      }
     }
 
     res.status(201).json({
