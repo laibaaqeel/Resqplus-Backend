@@ -178,6 +178,35 @@ exports.completeRequest = async (req, res) => {
   }
 };
 
+// ─── UPDATE LOCATION ─────────────────────────────────────
+exports.updateLocation = async (req, res) => {
+  try {
+    const { latitude, longitude, accident_id } = req.body;
+    if (!latitude || !longitude) return res.status(400).json({ message: 'latitude and longitude are required' });
+
+    const user = await User.findByPk(req.user.id, { attributes: ['id', 'name', 'vehicle_type'] });
+
+    try {
+      const { getIO } = require('../config/socket');
+      const io = getIO();
+      io.emit('paramedic_location', {
+        paramedic_id: req.user.id,
+        name:         user.name,
+        vehicle_type: user.vehicle_type,
+        latitude:     parseFloat(latitude),
+        longitude:    parseFloat(longitude),
+        accident_id:  accident_id || null
+      });
+    } catch (socketErr) {
+      console.log('Socket error:', socketErr.message);
+    }
+
+    res.json({ message: 'Location broadcast' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // ─── UPDATE MY STATUS ─────────────────────────────────────
 exports.updateMyStatus = async (req, res) => {
   try {

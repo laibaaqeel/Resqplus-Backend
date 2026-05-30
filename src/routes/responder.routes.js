@@ -5,7 +5,8 @@ const {
   rejectRequest,
   onWay,
   completeRequest,
-  updateMyStatus
+  updateMyStatus,
+  updateLocation
 } = require('../controllers/responder.controller');
 const { protect } = require('../middleware/auth.middleware');
 
@@ -140,5 +141,6 @@ router.post('/complete-request', protect, completeRequest);
  *         description: Status updated
  */
 router.put('/update-status', protect, updateMyStatus);
+router.post('/update-location', protect, updateLocation);
 
 module.exports = router;
