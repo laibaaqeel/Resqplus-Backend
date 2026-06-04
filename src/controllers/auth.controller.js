@@ -53,7 +53,7 @@ exports.login = async (req, res) => {
     // Find user
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      return res.status(401).json({ message: 'No account found with this email' });
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     // Check if account is active
@@ -64,7 +64,7 @@ exports.login = async (req, res) => {
     // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Incorrect password' });
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     // Generate JWT
