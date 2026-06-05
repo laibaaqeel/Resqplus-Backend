@@ -205,3 +205,56 @@ exports.updateMyStatus = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// ─── UPDATE LOCATION ─────────────────────────────────────
+exports.updateLocation = async (req, res) => {
+  try {
+    const { latitude, longitude, accident_id } = req.body;
+    if (!latitude || !longitude) return res.status(400).json({ message: 'latitude and longitude are required' });
+
+    const user = await User.findByPk(req.user.id, { attributes: ['id', 'name', 'vehicle_type'] });
+
+    try {
+      const { getIO } = require('../config/socket');
+      const io = getIO();
+      io.emit('paramedic_location', {
+        paramedic_id: req.user.id,
+        name:         user.name,
+        vehicle_type: user.vehicle_type,
+        latitude:     parseFloat(latitude),
+        longitude:    parseFloat(longitude),
+        accident_id:  accident_id || null
+      });
+    } catch (socketErr) {}
+
+    res.json({ message: 'Location broadcast' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ─── SOS ─────────────────────────────────────────────────
+exports.sendSOS = async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+    const user = await User.findByPk(req.user.id, { attributes: ['id', 'name', 'phone', 'vehicle_type'] });
+
+    try {
+      const { getIO } = require('../config/socket');
+      const io = getIO();
+      io.emit('paramedic_sos', {
+        paramedic_id: user.id,
+        name:         user.name,
+        phone:        user.phone,
+        vehicle_type: user.vehicle_type,
+        latitude,
+        longitude,
+        timestamp:    new Date()
+      });
+    } catch (socketErr) {}
+
+    res.json({ message: 'SOS sent to all admins' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
