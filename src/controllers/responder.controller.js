@@ -20,6 +20,7 @@ exports.getMyRequests = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 // ─── ACCEPT REQUEST ───────────────────────────────────────
 exports.acceptRequest = async (req, res) => {
   try {
@@ -54,25 +55,21 @@ exports.acceptRequest = async (req, res) => {
     });
 
     for (const otherRequest of otherRequests) {
-      // Cancel their request
       await EmergencyRequest.update(
         { status: 'cancelled' },
         { where: { id: otherRequest.id } }
       );
 
-      // Get accepting paramedic name
       const acceptingParamedic = await User.findByPk(req.user.id, {
         attributes: ['name']
       });
 
-      // Send notification to other paramedics
       await Notification.create({
         user_id: otherRequest.responder_id,
         accident_id: request.accident_id,
-        message: `✅ Emergency at this location has been accepted by ${acceptingParamedic.name}. No action needed.`
+        message: ` Emergency at this location has been accepted by ${acceptingParamedic.name}. No action needed.`
       });
 
-      // Send real-time socket notification
       try {
         const { getIO } = require('../config/socket');
         const io = getIO();
@@ -86,12 +83,6 @@ exports.acceptRequest = async (req, res) => {
     }
 
     const accident = await Accident.findByPk(request.accident_id);
-
-    try {
-      const { getIO } = require('../config/socket');
-      const io = getIO();
-      io.emit('accident_status_updated', { id: request.accident_id, status: 'accepted' });
-    } catch (socketErr) {}
 
     res.json({
       message: 'Request accepted',
@@ -147,7 +138,9 @@ exports.onWay = async (req, res) => {
       const { getIO } = require('../config/socket');
       const io = getIO();
       io.emit('accident_status_updated', { id: request.accident_id, status: 'on_way' });
-    } catch (socketErr) {}
+    } catch (socketErr) {
+      console.log('Socket error:', socketErr.message);
+    }
 
     res.json({ message: 'Status updated to on the way' });
   } catch (err) {
@@ -183,110 +176,11 @@ exports.completeRequest = async (req, res) => {
       { where: { id: req.user.id } }
     );
 
-    try {
-      const { getIO } = require('../config/socket');
-      const io = getIO();
-      io.emit('accident_status_updated', { id: request.accident_id, status: 'resolved' });
-    } catch (socketErr) {}
-
     res.json({
       message: 'Request completed successfully',
       response_time_minutes: responseTimeMinutes
     });
 
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-// ─── MY STATS ────────────────────────────────────────────
-exports.getMyStats = async (req, res) => {
-  try {
-    const all = await EmergencyRequest.findAll({
-      where: { responder_id: req.user.id, status: 'completed' },
-      order: [['created_at', 'DESC']]
-    });
-
-    const total = all.length;
-    const avgTime = total > 0
-      ? Math.round(all.reduce((s, r) => s + (r.response_time_minutes || 0), 0) / total)
-      : 0;
-
-    const now = new Date();
-    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-
-    const thisMonth = all.filter(r => new Date(r.createdAt) >= thisMonthStart).length;
-    const lastMonth = all.filter(r => {
-      const d = new Date(r.createdAt);
-      return d >= lastMonthStart && d < thisMonthStart;
-    }).length;
-
-    const recent = await EmergencyRequest.findAll({
-      where: { responder_id: req.user.id, status: 'completed' },
-      include: [{ model: Accident, as: 'accident', attributes: ['location', 'severity'] }],
-      order: [['created_at', 'DESC']],
-      limit: 5
-    });
-
-    res.json({ total, avg_time: avgTime, this_month: thisMonth, last_month: lastMonth, recent });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-// ─── SOS ─────────────────────────────────────────────────
-exports.sendSOS = async (req, res) => {
-  try {
-    const { latitude, longitude } = req.body;
-    const user = await User.findByPk(req.user.id, { attributes: ['id', 'name', 'phone', 'vehicle_type'] });
-
-    try {
-      const { getIO } = require('../config/socket');
-      const io = getIO();
-      io.emit('paramedic_sos', {
-        paramedic_id: user.id,
-        name:         user.name,
-        phone:        user.phone,
-        vehicle_type: user.vehicle_type,
-        latitude,
-        longitude,
-        timestamp:    new Date()
-      });
-    } catch (socketErr) {
-      console.log('Socket error:', socketErr.message);
-    }
-
-    res.json({ message: 'SOS sent to all admins' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-// ─── UPDATE LOCATION ─────────────────────────────────────
-exports.updateLocation = async (req, res) => {
-  try {
-    const { latitude, longitude, accident_id } = req.body;
-    if (!latitude || !longitude) return res.status(400).json({ message: 'latitude and longitude are required' });
-
-    const user = await User.findByPk(req.user.id, { attributes: ['id', 'name', 'vehicle_type'] });
-
-    try {
-      const { getIO } = require('../config/socket');
-      const io = getIO();
-      io.emit('paramedic_location', {
-        paramedic_id: req.user.id,
-        name:         user.name,
-        vehicle_type: user.vehicle_type,
-        latitude:     parseFloat(latitude),
-        longitude:    parseFloat(longitude),
-        accident_id:  accident_id || null
-      });
-    } catch (socketErr) {
-      console.log('Socket error:', socketErr.message);
-    }
-
-    res.json({ message: 'Location broadcast' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
