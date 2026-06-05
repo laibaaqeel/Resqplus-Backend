@@ -87,6 +87,12 @@ exports.acceptRequest = async (req, res) => {
 
     const accident = await Accident.findByPk(request.accident_id);
 
+    try {
+      const { getIO } = require('../config/socket');
+      const io = getIO();
+      io.emit('accident_status_updated', { id: request.accident_id, status: 'accepted' });
+    } catch (socketErr) {}
+
     res.json({
       message: 'Request accepted',
       accident: {
@@ -129,10 +135,19 @@ exports.onWay = async (req, res) => {
     const request_id = parseInt(req.body.request_id);
     if (!request_id) return res.status(400).json({ message: 'request_id is required' });
 
+    const request = await EmergencyRequest.findByPk(request_id);
+    if (!request) return res.status(404).json({ message: 'Request not found' });
+
     await EmergencyRequest.update(
       { status: 'on_way' },
       { where: { id: request_id } }
     );
+
+    try {
+      const { getIO } = require('../config/socket');
+      const io = getIO();
+      io.emit('accident_status_updated', { id: request.accident_id, status: 'on_way' });
+    } catch (socketErr) {}
 
     res.json({ message: 'Status updated to on the way' });
   } catch (err) {
@@ -167,6 +182,12 @@ exports.completeRequest = async (req, res) => {
       { status: 'active' },
       { where: { id: req.user.id } }
     );
+
+    try {
+      const { getIO } = require('../config/socket');
+      const io = getIO();
+      io.emit('accident_status_updated', { id: request.accident_id, status: 'resolved' });
+    } catch (socketErr) {}
 
     res.json({
       message: 'Request completed successfully',
