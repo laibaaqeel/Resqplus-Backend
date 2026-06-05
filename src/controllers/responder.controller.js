@@ -206,6 +206,42 @@ exports.updateMyStatus = async (req, res) => {
   }
 };
 
+// ─── MY STATS ────────────────────────────────────────────
+exports.getMyStats = async (req, res) => {
+  try {
+    const all = await EmergencyRequest.findAll({
+      where: { responder_id: req.user.id, status: 'completed' },
+      order: [['created_at', 'DESC']]
+    });
+
+    const total = all.length;
+    const avgTime = total > 0
+      ? Math.round(all.reduce((s, r) => s + (r.response_time_minutes || 0), 0) / total)
+      : 0;
+
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const thisMonth = all.filter(r => new Date(r.createdAt) >= thisMonthStart).length;
+    const lastMonth = all.filter(r => {
+      const d = new Date(r.createdAt);
+      return d >= lastMonthStart && d < thisMonthStart;
+    }).length;
+
+    const recent = await EmergencyRequest.findAll({
+      where: { responder_id: req.user.id, status: 'completed' },
+      include: [{ model: Accident, as: 'accident', attributes: ['location', 'severity'] }],
+      order: [['created_at', 'DESC']],
+      limit: 5
+    });
+
+    res.json({ total, avg_time: avgTime, this_month: thisMonth, last_month: lastMonth, recent });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // ─── UPDATE LOCATION ─────────────────────────────────────
 exports.updateLocation = async (req, res) => {
   try {
