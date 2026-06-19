@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { isValidEmail, isValidPassword, MIN_PASSWORD_LENGTH } = require('../utils/validators');
 
 // ─── REGISTER ─────────────────────────────────────────────
 exports.register = async (req, res) => {
@@ -10,6 +11,14 @@ exports.register = async (req, res) => {
     // Validate required fields
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email and password are required' });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: 'Please enter a valid email address' });
+    }
+
+    if (!isValidPassword(password)) {
+      return res.status(400).json({ message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
     }
 
     // Check if email already exists
@@ -147,6 +156,10 @@ exports.changePassword = async (req, res) => {
 
     if (!current_password || !new_password) {
       return res.status(400).json({ message: 'Both current and new password are required' });
+    }
+
+    if (!isValidPassword(new_password)) {
+      return res.status(400).json({ message: `New password must be at least ${MIN_PASSWORD_LENGTH} characters` });
     }
 
     const user = await User.findByPk(req.user.id);
